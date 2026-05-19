@@ -12,66 +12,7 @@
       rel="stylesheet"
     />
 
-    <!-- Chosen Palette: Custom Studio Blue (#0C75DD) -->
-
-    <style>
-      body {
-        font-family: "Inter", sans-serif;
-        background-color: #fafaf9;
-        color: #1c1917;
-      }
-      .no-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-      .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-      .card-hover:hover {
-        transform: translateY(-8px);
-      }
-      .dropdown-animate {
-        animation: slideDown 0.2s ease-out;
-      }
-      @keyframes slideDown {
-        from {
-          opacity: 0;
-          transform: translateY(-10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-      /* Custom scrollbar for tag list */
-      #tagList::-webkit-scrollbar {
-        width: 4px;
-      }
-      #tagList::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      #tagList::-webkit-scrollbar-thumb {
-        background: #e7e5e4;
-        border-radius: 10px;
-      }
-
-      /* Custom Accent Colors */
-      .text-custom-blue {
-        color: #0c75dd;
-      }
-      .bg-custom-blue {
-        background-color: #0c75dd;
-      }
-      .border-custom-blue {
-        border-color: #0c75dd;
-      }
-      .ring-custom-blue {
-        --tw-ring-color: rgba(12, 117, 221, 0.2);
-      }
-      .hover-bg-custom-blue:hover {
-        background-color: #0a61b9;
-      }
-    </style>
+    <link rel="stylesheet" href="./css/main.css" />
   </head>
   <body class="antialiased min-h-screen">
     <!-- 
@@ -106,6 +47,9 @@
         </div>
 
         <div class="flex flex-col gap-4 w-full md:w-auto md:items-end">
+          <!-- Auth controls (logout shown when logged in) -->
+          <div id="authControls"></div>
+
           <!-- Search Bar -->
           <div class="relative w-full md:w-64 group">
             <i
@@ -126,33 +70,8 @@
             </button>
           </div>
 
-          <!-- Add Form -->
-          <div
-            class="flex flex-col sm:flex-row gap-2 bg-white p-2 rounded-2xl shadow-xl border border-stone-100 w-full md:w-auto"
-          >
-            <input
-              type="text"
-              id="newStudioName"
-              placeholder="Studio Name"
-              class="px-4 py-2 rounded-xl bg-stone-50 focus:outline-none focus:ring-2 ring-custom-blue transition-all text-sm md:w-32 lg:w-40"
-            />
-            <input
-              type="text"
-              id="newStudioUrl"
-              placeholder="Paste URL..."
-              class="px-4 py-2 rounded-xl bg-stone-50 focus:outline-none focus:ring-2 ring-custom-blue transition-all text-sm md:w-40 lg:w-48"
-            />
-            <button
-              id="addStudioBtn"
-              class="bg-custom-blue hover-bg-custom-blue text-white p-2 rounded-xl transition-all flex items-center justify-center gap-2 px-4 font-semibold text-sm whitespace-nowrap group shadow-lg shadow-blue-100"
-            >
-              <i
-                data-lucide="plus"
-                class="w-4 h-4 group-hover:rotate-90 transition-transform"
-              ></i>
-              <span>Add Studio</span>
-            </button>
-          </div>
+          <!-- Add Studio Form (injected by JS when logged in) -->
+          <div id="addStudioFormContainer"></div>
         </div>
       </header>
 
@@ -256,7 +175,5 @@
     </div>
   </body>
 
-  <script src="./studios.js" type="module"></script>
-  <script src="./firebase.js" type="module"></script>
-  <script src="./application.js" type="module"></script>
+  <script src="./js/app.js" type="module"></script>
 </html>

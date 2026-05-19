@@ -1,0 +1,18 @@
+{
+  "name": "studiovault",
+  "version": "1.0.0",
+  "description": "A curated collection of creative links.",
+  "homepage": "https://github.com/TravisL12/studiovault#readme",
+  "bugs": {
+    "url": "https://github.com/TravisL12/studiovault/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TravisL12/studiovault.git"
+  },
+  "license": "ISC",
+  "scripts": {
+    "start": "http-server .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
