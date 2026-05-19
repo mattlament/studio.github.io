@@ -11,26 +11,16 @@ yarn install
 yarn start
 ```
 
-This runs `live-server`, which serves the project with auto-reload on file save.
+This runs `live-server`, which serves the project at `http://localhost:8080` with auto-reload on file save.
 
-To preview exactly how the site will behave on Firebase Hosting before deploying:
-
-```bash
-yarn serve
-```
-
-To deploy to production:
-
-```bash
-yarn deploy
-```
+Deployment is handled automatically by GitHub Pages — pushing to `main` publishes the site.
 
 ## Firebase Auth
 
 Admin features (adding, editing, and deleting studios) are gated behind Firebase Authentication. The login page is not linked from the main UI — navigate to `/pages/login.html` directly.
 
-To create an admin account, go to the [Firebase Console](https://console.firebase.google.com) → Authentication → Users → Add user.
+To create an admin account, go to the [Firebase Console](https://console.firebase.google.com) → Authentication → Users → Add user. Enable the Email/Password sign-in provider if you haven't already.
 
 Once logged in, a logout button appears in the header. Sessions persist across page refreshes via `localStorage` and remain active until you explicitly log out.
 
-The `/pages/upload.html` seed script is also auth-gated and will redirect to the login page if accessed without a session.
+The `/pages/upload.html` seed script is also auth-gated and will redirect to the login page if accessed unauthenticated.

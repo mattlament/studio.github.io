@@ -16,12 +16,9 @@
   "main": "application.js",
   "scripts": {
     "start": "live-server .",
-    "serve": "firebase serve --only hosting",
-    "deploy": "firebase deploy --only hosting",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
-    "firebase-tools": "^15.18.0",
     "live-server": "^1.2.2"
   }
 }
