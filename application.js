@@ -1,5 +1,4 @@
-import { fetchData, addLink, editLink, deleteLink } from "./firebase.js";
-import { masterStudios } from "./studios.js";
+import { fetchData, addLink, editLink, deleteLink, onAuthChange, logout } from "./firebase.js";
 
 // STATE
 let studios = [];
@@ -7,6 +6,7 @@ let selectedTags = [];
 let searchTerm = "";
 let sortBy = "recent";
 let editingId = null;
+let isLoggedIn = false;
 
 // ELEMENT REFERENCES
 const grid = document.getElementById("studioGrid");
@@ -18,19 +18,89 @@ const filterMenu = document.getElementById("filterMenu");
 const tagList = document.getElementById("tagList");
 const emptyState = document.getElementById("emptyState");
 const resultCountText = document.getElementById("resultCount");
+const addFormContainer = document.getElementById("addStudioFormContainer");
+const authControls = document.getElementById("authControls");
 
 // INITIALIZE
 async function init() {
   const data = await fetchData();
-  studios = [...data, ...studios]
+  studios = [...data]
     .filter((x) => x.title)
     .map((x) => ({ ...x, tags: x.tags || [] }));
-  render();
+
   setupEventListeners();
+
+  onAuthChange((user) => {
+    isLoggedIn = !!user;
+    updateAuthUI();
+    render();
+  });
+}
+
+function updateAuthUI() {
+  if (isLoggedIn) {
+    addFormContainer.innerHTML = `
+      <div class="flex flex-col sm:flex-row gap-2 bg-white p-2 rounded-2xl shadow-xl border border-stone-100 w-full md:w-auto">
+        <input
+          type="text"
+          id="newStudioName"
+          placeholder="Studio Name"
+          class="px-4 py-2 rounded-xl bg-stone-50 focus:outline-none focus:ring-2 ring-custom-blue transition-all text-sm md:w-32 lg:w-40"
+        />
+        <input
+          type="text"
+          id="newStudioUrl"
+          placeholder="Paste URL..."
+          class="px-4 py-2 rounded-xl bg-stone-50 focus:outline-none focus:ring-2 ring-custom-blue transition-all text-sm md:w-40 lg:w-48"
+        />
+        <button
+          id="addStudioBtn"
+          class="bg-custom-blue hover-bg-custom-blue text-white p-2 rounded-xl transition-all flex items-center justify-center gap-2 px-4 font-semibold text-sm whitespace-nowrap group shadow-lg shadow-blue-100"
+        >
+          <i data-lucide="plus" class="w-4 h-4 group-hover:rotate-90 transition-transform"></i>
+          <span>Add Studio</span>
+        </button>
+      </div>
+    `;
+    lucide.createIcons();
+    setupAddStudio();
+
+    authControls.innerHTML = `
+      <button id="logoutBtn" class="flex items-center gap-1.5 text-[11px] font-bold text-stone-400 hover:text-stone-600 uppercase tracking-widest transition-colors">
+        <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+        <span>Logout</span>
+      </button>
+    `;
+    lucide.createIcons();
+    document.getElementById("logoutBtn").addEventListener("click", logout);
+  } else {
+    addFormContainer.innerHTML = "";
+    authControls.innerHTML = "";
+  }
+}
+
+function setupAddStudio() {
+  document.getElementById("addStudioBtn").addEventListener("click", async () => {
+    const nameInp = document.getElementById("newStudioName");
+    const urlInp = document.getElementById("newStudioUrl");
+    if (!urlInp.value) return;
+
+    const title =
+      nameInp.value || urlInp.value.split("//")[1]?.split(".")[0] || "Studio";
+    const url = urlInp.value.startsWith("http")
+      ? urlInp.value
+      : `https://${urlInp.value}`;
+    const tags = ["Added Source"];
+
+    const firestoreId = await addLink(title, url, tags);
+    studios.unshift({ id: Date.now(), firestoreId, title, url, tags });
+    nameInp.value = "";
+    urlInp.value = "";
+    render();
+  });
 }
 
 function setupEventListeners() {
-  // Search logic
   searchInput.addEventListener("input", (e) => {
     searchTerm = e.target.value;
     clearSearchBtn.classList.toggle("hidden", !searchTerm);
@@ -44,13 +114,11 @@ function setupEventListeners() {
     render();
   });
 
-  // Sorting logic
   sortSelect.addEventListener("change", (e) => {
     sortBy = e.target.value;
     render();
   });
 
-  // Category Dropdown logic
   filterToggle.addEventListener("click", (e) => {
     e.stopPropagation();
     filterMenu.classList.toggle("hidden");
@@ -61,28 +129,6 @@ function setupEventListeners() {
       filterMenu.classList.add("hidden");
     }
   });
-
-  // Add Studio logic
-  document
-    .getElementById("addStudioBtn")
-    .addEventListener("click", async () => {
-      const nameInp = document.getElementById("newStudioName");
-      const urlInp = document.getElementById("newStudioUrl");
-      if (!urlInp.value) return;
-
-      const title =
-        nameInp.value || urlInp.value.split("//")[1]?.split(".")[0] || "Studio";
-      const url = urlInp.value.startsWith("http")
-        ? urlInp.value
-        : `https://${urlInp.value}`;
-      const tags = ["Added Source"];
-
-      const firestoreId = await addLink(title, url, tags);
-      studios.unshift({ id: Date.now(), firestoreId, title, url, tags });
-      nameInp.value = "";
-      urlInp.value = "";
-      render();
-    });
 }
 
 function getFavicon(url) {
@@ -96,7 +142,6 @@ function getFavicon(url) {
 
 // MAIN RENDER ENGINE
 function render() {
-  // FILTER & SORT
   let filtered = studios.filter((s) => {
     const matchesSearch =
       s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -113,28 +158,27 @@ function render() {
     filtered.sort((a, b) => b.id - a.id);
   }
 
-  // INJECT CARDS
   grid.innerHTML = "";
   filtered.forEach((studio) => {
-    const isEditing = editingId === studio.firestoreId;
+    const isEditing = isLoggedIn && editingId === studio.firestoreId;
     const card = document.createElement("div");
     card.className =
       "group relative bg-white rounded-[32px] p-6 border border-stone-100 shadow-sm hover:shadow-2xl card-hover transition-all duration-500 flex flex-col justify-between overflow-hidden min-h-[250px]";
 
     if (isEditing) {
       card.innerHTML = `
-                        <div class="relative z-10 space-y-3 h-full flex flex-col justify-between">
-                            <div class="space-y-2">
-                                <input id="editName" class="w-full bg-stone-50 p-2 rounded-lg text-sm font-bold border border-stone-200 focus:ring-1 ring-custom-blue outline-none" value="${studio.title}">
-                                <input id="editUrl" class="w-full bg-stone-50 p-2 rounded-lg text-xs border border-stone-200 focus:ring-1 ring-custom-blue outline-none" value="${studio.url}">
-                                <textarea id="editTags" class="w-full bg-stone-50 p-2 rounded-lg text-xs border border-stone-200 h-20 resize-none font-medium outline-none">${studio.tags.join(", ")}</textarea>
-                            </div>
-                            <div class="flex gap-2">
-                                <button onclick="saveEdit('${studio.firestoreId}')" class="flex-1 bg-custom-blue text-white py-2 rounded-xl text-xs font-bold shadow-lg shadow-blue-100 hover-bg-custom-blue transition-colors">Save</button>
-                                <button onclick="cancelEdit()" class="flex-1 bg-stone-100 text-stone-500 py-2 rounded-xl text-xs font-bold hover:bg-stone-200 transition-colors">Cancel</button>
-                            </div>
-                        </div>
-                    `;
+        <div class="relative z-10 space-y-3 h-full flex flex-col justify-between">
+          <div class="space-y-2">
+            <input id="editName" class="w-full bg-stone-50 p-2 rounded-lg text-sm font-bold border border-stone-200 focus:ring-1 ring-custom-blue outline-none" value="${studio.title}">
+            <input id="editUrl" class="w-full bg-stone-50 p-2 rounded-lg text-xs border border-stone-200 focus:ring-1 ring-custom-blue outline-none" value="${studio.url}">
+            <textarea id="editTags" class="w-full bg-stone-50 p-2 rounded-lg text-xs border border-stone-200 h-20 resize-none font-medium outline-none">${studio.tags.join(", ")}</textarea>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="saveEdit('${studio.firestoreId}')" class="flex-1 bg-custom-blue text-white py-2 rounded-xl text-xs font-bold shadow-lg shadow-blue-100 hover-bg-custom-blue transition-colors">Save</button>
+            <button onclick="cancelEdit()" class="flex-1 bg-stone-100 text-stone-500 py-2 rounded-xl text-xs font-bold hover:bg-stone-200 transition-colors">Cancel</button>
+          </div>
+        </div>
+      `;
     } else {
       const tagHtml = studio.tags
         .map(
@@ -143,42 +187,46 @@ function render() {
         )
         .join("");
 
+      const adminButtons = isLoggedIn
+        ? `
+          <button onclick="event.preventDefault(); startEdit('${studio.firestoreId}')" class="text-stone-300 hover:text-custom-blue p-1.5 relative z-20 transition-all hover:scale-110" title="Edit Studio">
+            <i data-lucide="pencil" class="w-4 h-4"></i>
+          </button>
+          <button onclick="event.preventDefault(); deleteStudio('${studio.firestoreId}')" class="text-stone-300 hover:text-red-500 p-1.5 relative z-20 transition-all hover:scale-110" title="Remove from vault">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+          </button>
+        `
+        : "";
+
       card.innerHTML = `
-                        <a href="${studio.url}" target="_blank" class="no-underline h-full flex flex-col justify-between">
-                            <div class="absolute inset-0 bg-gradient-to-br from-[#0C75DD]/0 to-[#0C75DD]/0 group-hover:from-[#0C75DD]/10 group-hover:to-[#0C75DD]/20 transition-colors duration-500"></div>
-                            <div class="relative z-10">
-                                <div class="flex justify-between items-start mb-8">
-                                    <div class="w-14 h-14 rounded-2xl bg-white flex items-center justify-center overflow-hidden border border-stone-100 shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-500">
-                                        <img src="${getFavicon(studio.url)}" class="w-8 h-8 object-contain">
-                                    </div>
-                                    <div class="flex gap-1 items-center">
-                                        <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-custom-blue transform translate-x-2 group-hover:translate-x-0">
-                                            <i data-lucide="arrow-up-right" class="w-5 h-5"></i>
-                                        </div>
-                                        <button onclick="event.preventDefault(); startEdit('${studio.firestoreId}')" class="text-stone-300 hover:text-custom-blue p-1.5 relative z-20 transition-all hover:scale-110" title="Edit Studio">
-                                            <i data-lucide="pencil" class="w-4 h-4"></i>
-                                        </button>
-                                        <button onclick="event.preventDefault(); deleteStudio('${studio.firestoreId}')" class="text-stone-300 hover:text-red-500 p-1.5 relative z-20 transition-all hover:scale-110" title="Remove from vault">
-                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <h3 class="text-xl font-bold text-stone-900 mb-1 group-hover:text-custom-blue transition-colors line-clamp-2 leading-tight tracking-tight">${studio.title}</h3>
-                                <div class="flex flex-wrap gap-1.5 mt-4">${tagHtml}</div>
-                            </div>
-                            <div class="mt-8 relative z-10 pt-4 border-t border-stone-50">
-                                <p class="text-[10px] text-stone-300 font-bold truncate group-hover:text-stone-400 transition-colors uppercase tracking-[0.1em]">${studio.url.replace("https://", "").replace("http://", "").replace("www.", "").split("/")[0]}</p>
-                            </div>
-                        </a>
-                    `;
+        <a href="${studio.url}" target="_blank" class="no-underline h-full flex flex-col justify-between">
+          <div class="absolute inset-0 bg-gradient-to-br from-[#0C75DD]/0 to-[#0C75DD]/0 group-hover:from-[#0C75DD]/10 group-hover:to-[#0C75DD]/20 transition-colors duration-500"></div>
+          <div class="relative z-10">
+            <div class="flex justify-between items-start mb-8">
+              <div class="w-14 h-14 rounded-2xl bg-white flex items-center justify-center overflow-hidden border border-stone-100 shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-500">
+                <img src="${getFavicon(studio.url)}" class="w-8 h-8 object-contain">
+              </div>
+              <div class="flex gap-1 items-center">
+                <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-custom-blue transform translate-x-2 group-hover:translate-x-0">
+                  <i data-lucide="arrow-up-right" class="w-5 h-5"></i>
+                </div>
+                ${adminButtons}
+              </div>
+            </div>
+            <h3 class="text-xl font-bold text-stone-900 mb-1 group-hover:text-custom-blue transition-colors line-clamp-2 leading-tight tracking-tight">${studio.title}</h3>
+            <div class="flex flex-wrap gap-1.5 mt-4">${tagHtml}</div>
+          </div>
+          <div class="mt-8 relative z-10 pt-4 border-t border-stone-50">
+            <p class="text-[10px] text-stone-300 font-bold truncate group-hover:text-stone-400 transition-colors uppercase tracking-[0.1em]">${studio.url.replace("https://", "").replace("http://", "").replace("www.", "").split("/")[0]}</p>
+          </div>
+        </a>
+      `;
     }
     grid.appendChild(card);
   });
 
-  // REFRESH ICONS
   lucide.createIcons();
 
-  // UPDATE UI STATE
   emptyState.classList.toggle("hidden", filtered.length > 0);
   resultCountText.innerText = `${filtered.length} studios saved`;
   renderTagList();
@@ -204,20 +252,10 @@ function renderTagList() {
   const toggleBtn = document.getElementById("filterToggle");
   const label = document.getElementById("filterLabel");
   if (selectedTags.length > 0) {
-    toggleBtn.classList.add(
-      "text-custom-blue",
-      "border-custom-blue",
-      "ring-2",
-      "ring-custom-blue",
-    );
+    toggleBtn.classList.add("text-custom-blue", "border-custom-blue", "ring-2", "ring-custom-blue");
     label.innerText = `Categories (${selectedTags.length})`;
   } else {
-    toggleBtn.classList.remove(
-      "text-custom-blue",
-      "border-custom-blue",
-      "ring-2",
-      "ring-custom-blue",
-    );
+    toggleBtn.classList.remove("text-custom-blue", "border-custom-blue", "ring-2", "ring-custom-blue");
     label.innerText = "Filter Categories";
   }
 
@@ -229,6 +267,7 @@ function renderTagList() {
 
 // ACTION HANDLERS
 window.startEdit = (firestoreId) => {
+  if (!isLoggedIn) return;
   editingId = firestoreId;
   render();
 };
@@ -237,6 +276,7 @@ window.cancelEdit = () => {
   render();
 };
 window.saveEdit = async (firestoreId) => {
+  if (!isLoggedIn) return;
   const title = document.getElementById("editName").value;
   const url = document.getElementById("editUrl").value;
   const tags = document
@@ -252,6 +292,7 @@ window.saveEdit = async (firestoreId) => {
   render();
 };
 window.deleteStudio = async (firestoreId) => {
+  if (!isLoggedIn) return;
   if (!confirm("Remove this studio from the vault?")) return;
   await deleteLink(firestoreId);
   studios = studios.filter((s) => s.firestoreId !== firestoreId);
